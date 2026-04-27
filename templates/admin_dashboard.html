@@ -1,0 +1,631 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — LocalPrice Nigeria{% endblock %}
+
+{% block content %}
+
+<!-- ACCESS DENIED -->
+<div id="access-denied" class="hidden max-w-md mx-auto text-center mt-16">
+  <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4">🔒</div>
+  <h1 class="text-2xl font-bold text-slate-800 mb-2">Admin Access Only</h1>
+  <p class="text-slate-500 text-sm mb-6">You must be logged in as an administrator to view this page.</p>
+  <a href="/" class="btn-primary">Go to Home</a>
+</div>
+
+<!-- EDIT MODAL -->
+<div id="edit-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md" onclick="event.stopPropagation()">
+    <div class="flex items-center justify-between p-5 border-b border-slate-100">
+      <h2 class="font-bold text-slate-800 text-lg">Edit Submission</h2>
+      <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition text-xl leading-none">&times;</button>
+    </div>
+    <div class="p-5 space-y-4">
+      <div id="edit-error" class="hidden text-red-700 text-sm bg-red-50 border border-red-100 rounded-xl px-4 py-3"></div>
+
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Grocery Item</label>
+        <select id="edit-item" class="form-input">
+          <option value="">Loading…</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Market / Store</label>
+        <select id="edit-store" class="form-input">
+          <option value="">Loading…</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Price (₦)</label>
+        <div class="relative">
+          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">₦</span>
+          <input type="number" id="edit-price" class="form-input pl-8" min="1" step="1" placeholder="e.g. 1200" />
+        </div>
+      </div>
+      <div class="flex items-center gap-3 py-1">
+        <span class="text-sm font-semibold text-slate-700">Status</span>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="edit-approved" class="sr-only peer">
+          <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+          <span class="ml-2.5 text-sm text-slate-600" id="edit-approved-label">Pending</span>
+        </label>
+      </div>
+    </div>
+    <div class="flex gap-3 p-5 pt-0">
+      <button onclick="closeEditModal()" class="btn-secondary flex-1">Cancel</button>
+      <button onclick="saveEdit()" id="edit-save-btn" class="btn-primary flex-1">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN DASHBOARD -->
+<div id="admin-content" class="hidden">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+    <div>
+      <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Admin Dashboard</h1>
+      <p class="text-slate-500 text-sm mt-0.5">Manage submissions, review activity, and monitor the platform.</p>
+    </div>
+    <div class="flex gap-2">
+      <a href="/admin/" target="_blank" class="btn-secondary text-xs !py-2 flex items-center gap-1.5">
+        🛠️ Django Admin
+      </a>
+      <button onclick="refreshAll()" class="btn-primary text-xs !py-2 flex items-center gap-1.5">
+        🔄 Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- SUMMARY STATS -->
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-7" id="stat-cards">
+    <div class="card animate-pulse col-span-2 md:col-span-5 h-20 !bg-slate-100 border-0 shadow-none"></div>
+  </div>
+
+  <!-- PENDING + LEADERBOARD -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-7">
+    <div class="card">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-bold text-slate-800 flex items-center gap-2">
+          ⏳ Pending Approvals
+          <span id="pending-count-badge" class="badge bg-amber-100 text-amber-700"></span>
+        </h2>
+        <button onclick="approveAll()" id="approve-all-btn"
+          class="hidden btn-approve text-xs">✅ Approve All</button>
+      </div>
+      <div id="pending-list">
+        <div class="text-slate-400 text-sm text-center py-6 animate-pulse">Loading…</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2 class="font-bold text-slate-800 mb-4">🏆 Top Contributors</h2>
+      <div id="leaderboard-list">
+        <div class="text-slate-400 text-sm text-center py-6 animate-pulse">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-7">
+    <div class="card">
+      <h2 class="font-bold text-slate-800 mb-4">📅 Submissions (Last 14 Days)</h2>
+      <div id="daily-chart" class="flex items-end gap-1 h-32">
+        <div class="text-slate-400 text-sm animate-pulse">Loading…</div>
+      </div>
+      <div id="daily-chart-labels" class="flex gap-1 mt-1 text-xs text-slate-400"></div>
+    </div>
+    <div class="card">
+      <h2 class="font-bold text-slate-800 mb-4">🗂️ Price Reports by Category</h2>
+      <div id="category-chart">
+        <div class="text-slate-400 text-sm animate-pulse">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALL SUBMISSIONS TABLE -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+      <h2 class="font-bold text-slate-800">📋 All Recent Submissions</h2>
+      <div class="flex items-center gap-3">
+        <select id="filter-status" onchange="renderTable()"
+          class="text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+          <option value="all">All</option>
+          <option value="pending">Pending only</option>
+          <option value="approved">Approved only</option>
+        </select>
+        <input id="filter-search" oninput="renderTable()" type="text" placeholder="Search…"
+          class="text-sm border border-slate-200 rounded-xl px-3 py-2 w-36 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white" />
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-slate-100 text-left text-xs text-slate-400 uppercase tracking-wider">
+            <th class="pb-3 pr-4 font-semibold">Item</th>
+            <th class="pb-3 pr-4 font-semibold">Store</th>
+            <th class="pb-3 pr-4 font-semibold">Price</th>
+            <th class="pb-3 pr-4 font-semibold">User</th>
+            <th class="pb-3 pr-4 font-semibold">Status</th>
+            <th class="pb-3 pr-4 font-semibold">Time</th>
+            <th class="pb-3 font-semibold">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="submissions-table-body">
+          <tr><td colspan="7" class="text-slate-400 text-center py-8 animate-pulse">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="table-footer" class="text-xs text-slate-400 mt-3 text-right"></div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allSubmissions = [];
+let allItems = [];
+let allStores = [];
+let editingId = null;
+
+// ── Bootstrap ──────────────────────────────────────────────────────────────────
+(async function init() {
+  const user = getUser();
+  if (!user || !user.is_staff) {
+    document.getElementById('access-denied').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('admin-content').classList.remove('hidden');
+  refreshAll();
+  prefetchEditResources();
+})();
+
+async function refreshAll() {
+  await Promise.all([
+    loadStats(), loadPending(), loadLeaderboard(), loadCharts(), loadAllSubmissions(),
+  ]);
+}
+
+// ── Pre-load items/stores for the edit modal ───────────────────────────────────
+async function prefetchEditResources() {
+  try {
+    [allItems, allStores] = await Promise.all([api('/api/items/'), api('/api/stores/')]);
+
+    const itemSel = document.getElementById('edit-item');
+    itemSel.innerHTML = '<option value="">— Select item —</option>';
+    const byCategory = {};
+    allItems.forEach(i => { (byCategory[i.category] = byCategory[i.category] || []).push(i); });
+    Object.entries(byCategory).forEach(([cat, its]) => {
+      const og = document.createElement('optgroup');
+      og.label = cat;
+      its.forEach(i => {
+        const o = document.createElement('option');
+        o.value = i.id; o.textContent = i.name; og.appendChild(o);
+      });
+      itemSel.appendChild(og);
+    });
+
+    const storeSel = document.getElementById('edit-store');
+    storeSel.innerHTML = '<option value="">— Select store —</option>' +
+      allStores.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  } catch {}
+}
+
+// ── Edit modal ─────────────────────────────────────────────────────────────────
+document.getElementById('edit-approved').addEventListener('change', function () {
+  document.getElementById('edit-approved-label').textContent = this.checked ? 'Approved' : 'Pending';
+});
+
+function openEditModal(id) {
+  const s = allSubmissions.find(x => x.id === id);
+  if (!s) return;
+  editingId = id;
+
+  document.getElementById('edit-price').value = s.price;
+  document.getElementById('edit-item').value = s.itemId || '';
+  document.getElementById('edit-store').value = s.storeId || '';
+  const approved = !!s.isApproved;
+  document.getElementById('edit-approved').checked = approved;
+  document.getElementById('edit-approved-label').textContent = approved ? 'Approved' : 'Pending';
+  document.getElementById('edit-error').classList.add('hidden');
+  document.getElementById('edit-modal').classList.remove('hidden');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.add('hidden');
+  editingId = null;
+}
+
+async function saveEdit() {
+  const btn = document.getElementById('edit-save-btn');
+  const errEl = document.getElementById('edit-error');
+  const itemVal  = document.getElementById('edit-item').value;
+  const storeVal = document.getElementById('edit-store').value;
+  const priceVal = document.getElementById('edit-price').value;
+
+  if (!itemVal || !storeVal || !priceVal) {
+    errEl.textContent = 'Please fill in all fields.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  errEl.classList.add('hidden');
+
+  try {
+    const updated = await api(`/api/prices/${editingId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        price: parseFloat(priceVal),
+        item: parseInt(itemVal),
+        store: parseInt(storeVal),
+        is_approved: document.getElementById('edit-approved').checked,
+      }),
+    });
+
+    // Merge back into local state
+    const idx = allSubmissions.findIndex(s => s.id === editingId);
+    if (idx !== -1) {
+      Object.assign(allSubmissions[idx], {
+        itemId: updated.itemId,
+        itemName: updated.itemName,
+        itemCategory: updated.itemCategory,
+        storeId: updated.storeId,
+        storeName: updated.storeName,
+        price: updated.price,
+        isApproved: updated.isApproved,
+      });
+    }
+
+    closeEditModal();
+    renderTable();
+    loadStats();
+    loadPending();
+    updateNav();
+    showToast('✅ Submission updated successfully.', 'green');
+  } catch {
+    errEl.textContent = 'Could not save changes. Please try again.';
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save Changes';
+  }
+}
+
+// ── Delete ─────────────────────────────────────────────────────────────────────
+async function adminDelete(id) {
+  if (!confirm('Permanently delete this submission? This cannot be undone.')) return;
+  const row = document.getElementById(`trow-${id}`);
+  const padRow = document.getElementById(`pad-${id}`);
+  if (row) row.style.opacity = '0.4';
+  if (padRow) padRow.style.opacity = '0.4';
+  try {
+    await api(`/api/prices/${id}/`, { method: 'DELETE' });
+    allSubmissions = allSubmissions.filter(s => s.id !== id);
+    renderTable();
+    loadStats();
+    loadPending();
+    updateNav();
+    showToast('🗑️ Submission deleted.', 'gray');
+  } catch {
+    if (row) row.style.opacity = '1';
+    if (padRow) padRow.style.opacity = '1';
+    showToast('❌ Delete failed. Try again.', 'red');
+  }
+}
+
+// ── Summary Stats ──────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const [dash, items, stores] = await Promise.all([
+      api('/api/dashboard/'), api('/api/items/'), api('/api/stores/'),
+    ]);
+    document.getElementById('stat-cards').innerHTML = `
+      <div class="card text-center border-l-4 border-amber-400">
+        <div class="text-3xl font-extrabold text-amber-600">${dash.pendingSubmissions ?? 0}</div>
+        <div class="text-slate-400 text-xs mt-1 font-semibold uppercase tracking-wide">Pending</div>
+      </div>
+      <div class="card text-center border-l-4 border-emerald-500">
+        <div class="text-3xl font-extrabold text-emerald-700">${dash.totalPriceSubmissions.toLocaleString()}</div>
+        <div class="text-slate-400 text-xs mt-1 font-semibold uppercase tracking-wide">Approved</div>
+      </div>
+      <div class="card text-center border-l-4 border-blue-400">
+        <div class="text-3xl font-extrabold text-blue-700">${dash.totalUsers}</div>
+        <div class="text-slate-400 text-xs mt-1 font-semibold uppercase tracking-wide">Users</div>
+      </div>
+      <div class="card text-center border-l-4 border-purple-400">
+        <div class="text-3xl font-extrabold text-purple-700">${stores.length}</div>
+        <div class="text-slate-400 text-xs mt-1 font-semibold uppercase tracking-wide">Markets</div>
+      </div>
+      <div class="card text-center border-l-4 border-slate-400">
+        <div class="text-3xl font-extrabold text-slate-700">${items.length}</div>
+        <div class="text-slate-400 text-xs mt-1 font-semibold uppercase tracking-wide">Items</div>
+      </div>`;
+  } catch {
+    document.getElementById('stat-cards').innerHTML =
+      '<p class="text-red-500 col-span-5 text-sm">Could not load stats.</p>';
+  }
+}
+
+// ── Pending Approvals ──────────────────────────────────────────────────────────
+async function loadPending() {
+  const listEl  = document.getElementById('pending-list');
+  const badgeEl = document.getElementById('pending-count-badge');
+  const allBtn  = document.getElementById('approve-all-btn');
+  try {
+    const pending = await api('/api/prices/pending/');
+    badgeEl.textContent = `${pending.length} pending`;
+    allBtn.classList.toggle('hidden', pending.length === 0);
+
+    if (!pending.length) {
+      listEl.innerHTML = '<p class="text-slate-400 text-sm text-center py-6">🎉 No pending submissions.</p>';
+      return;
+    }
+    listEl.innerHTML = `<div class="space-y-2 max-h-80 overflow-y-auto pr-1">` +
+      pending.map(p => `
+      <div class="flex items-center justify-between gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100" id="pad-${p.id}">
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold text-slate-800 text-sm truncate">${p.itemName}
+            <span class="badge bg-slate-200 text-slate-600 ml-1">${p.itemCategory}</span>
+          </div>
+          <div class="text-xs text-slate-400 mt-0.5 truncate">
+            📍 ${p.storeName} &nbsp;·&nbsp; 👤 ${p.username} &nbsp;·&nbsp; ${timeSince(new Date(p.createdAt))}
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <span class="font-bold text-slate-800 text-sm">${naira(p.price)}</span>
+          <button class="btn-approve" onclick="quickApprove(${p.id})">✅</button>
+          <button onclick="openEditModal(${p.id})" title="Edit"
+            class="w-7 h-7 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition text-sm">✏️</button>
+          <button onclick="adminDelete(${p.id})" title="Delete"
+            class="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition text-sm">🗑️</button>
+        </div>
+      </div>`).join('') + '</div>';
+
+    // Sync any pending submissions into allSubmissions so the modal can read them
+    pending.forEach(p => {
+      if (!allSubmissions.find(s => s.id === p.id)) {
+        allSubmissions.push({
+          id: p.id, itemId: null, itemName: p.itemName, itemCategory: p.itemCategory,
+          storeId: null, storeName: p.storeName, price: p.price,
+          username: p.username, isApproved: false, createdAt: p.createdAt,
+        });
+      }
+    });
+  } catch {
+    listEl.innerHTML = '<p class="text-red-400 text-sm text-center py-4">Could not load pending.</p>';
+  }
+}
+
+async function quickApprove(id) {
+  const row = document.getElementById(`pad-${id}`);
+  if (row) { row.style.opacity = '0.4'; row.querySelectorAll('button').forEach(b => b.disabled = true); }
+  try {
+    const res = await api(`/api/prices/${id}/approve/`, { method: 'POST' });
+    row?.remove();
+    decrementPending();
+    showToast(`✅ Approved — ${res.username} earns +10 pts (total: ${res.newPoints})`, 'green');
+    loadStats(); updateNav(); loadAllSubmissions();
+  } catch {
+    if (row) { row.style.opacity = '1'; row.querySelectorAll('button').forEach(b => b.disabled = false); }
+    showToast('❌ Approval failed.', 'red');
+  }
+}
+
+async function approveAll() {
+  if (!confirm('Approve ALL pending submissions at once?')) return;
+  try {
+    const pending = await api('/api/prices/pending/');
+    let count = 0;
+    for (const p of pending) {
+      try { await api(`/api/prices/${p.id}/approve/`, { method: 'POST' }); count++; } catch {}
+    }
+    showToast(`✅ Approved ${count} submission${count !== 1 ? 's' : ''}.`, 'green');
+    await Promise.all([loadStats(), loadPending(), loadAllSubmissions(), updateNav()]);
+  } catch {
+    showToast('❌ Could not approve all. Try again.', 'red');
+  }
+}
+
+function decrementPending() {
+  const badge = document.getElementById('pending-count-badge');
+  const n = Math.max(0, (parseInt(badge.textContent) || 1) - 1);
+  badge.textContent = `${n} pending`;
+  document.getElementById('approve-all-btn').classList.toggle('hidden', n === 0);
+  if (n === 0) {
+    document.getElementById('pending-list').innerHTML =
+      '<p class="text-slate-400 text-sm text-center py-6">🎉 No pending submissions.</p>';
+  }
+}
+
+// ── Leaderboard ────────────────────────────────────────────────────────────────
+async function loadLeaderboard() {
+  const el = document.getElementById('leaderboard-list');
+  try {
+    const board = await api('/api/prices/leaderboard/');
+    if (!board.length) {
+      el.innerHTML = '<p class="text-slate-400 text-sm text-center py-6">No contributors yet.</p>';
+      return;
+    }
+    const medals = ['🥇','🥈','🥉'];
+    el.innerHTML = `<div class="space-y-2">` + board.map((u, i) => `
+      <div class="flex items-center gap-3 p-2.5 rounded-xl ${i === 0 ? 'bg-amber-50' : 'hover:bg-slate-50'} transition">
+        <span class="text-xl w-7 text-center shrink-0">${medals[i] || `${i+1}.`}</span>
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold text-slate-800 text-sm">${u.username}</div>
+          <div class="text-xs text-slate-400">${u.submissionsCount} approved submissions</div>
+        </div>
+        <div class="font-bold text-emerald-700 text-sm shrink-0">${u.points} pts</div>
+      </div>`).join('') + '</div>';
+  } catch {
+    el.innerHTML = '<p class="text-red-400 text-sm text-center py-4">Could not load leaderboard.</p>';
+  }
+}
+
+// ── Charts ─────────────────────────────────────────────────────────────────────
+async function loadCharts() {
+  try {
+    const stats = await api('/api/prices/admin-stats/');
+    const daily = stats.dailyActivity;
+    const chartEl = document.getElementById('daily-chart');
+    const labelEl = document.getElementById('daily-chart-labels');
+    if (!daily.length) {
+      chartEl.innerHTML = '<span class="text-slate-400 text-sm">No data for the last 14 days.</span>';
+      return;
+    }
+    const maxCount = Math.max(...daily.map(d => d.count), 1);
+    chartEl.innerHTML = daily.map(d => {
+      const pct = Math.max(4, Math.round((d.count / maxCount) * 100));
+      return `
+      <div class="flex-1 flex flex-col items-center group relative">
+        <div class="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-10">${d.count} on ${d.date}</div>
+        <div class="w-full rounded-t-md bg-emerald-500 hover:bg-emerald-600 transition" style="height:${pct}%"></div>
+      </div>`;
+    }).join('');
+    labelEl.innerHTML = daily.map(d => {
+      const day = new Date(d.date + 'T00:00:00').toLocaleDateString('en-NG', { month: 'short', day: 'numeric' });
+      return `<div class="flex-1 text-center text-slate-400" style="font-size:10px">${day}</div>`;
+    }).join('');
+
+    const catEl = document.getElementById('category-chart');
+    const cats = stats.byCategory;
+    if (!cats.length) { catEl.innerHTML = '<span class="text-slate-400 text-sm">No data.</span>'; return; }
+    const maxCat = Math.max(...cats.map(c => c.count), 1);
+    const CAT_COLORS = {
+      Staples:'bg-emerald-500', Vegetables:'bg-lime-500', Fruits:'bg-orange-400',
+      Oils:'bg-yellow-500', Noodles:'bg-red-400', Beverages:'bg-blue-400',
+      Dairy:'bg-purple-400', Bakery:'bg-amber-400',
+    };
+    catEl.innerHTML = `<div class="space-y-2.5">` + cats.map(c => {
+      const pct = Math.round((c.count / maxCat) * 100);
+      const color = CAT_COLORS[c.category] || 'bg-slate-400';
+      return `
+      <div>
+        <div class="flex justify-between text-xs text-slate-600 mb-1">
+          <span class="font-medium">${c.category}</span><span class="font-bold">${c.count}</span>
+        </div>
+        <div class="w-full bg-slate-100 rounded-full h-2">
+          <div class="h-2 rounded-full ${color}" style="width:${pct}%"></div>
+        </div>
+      </div>`;
+    }).join('') + '</div>';
+  } catch {
+    document.getElementById('daily-chart').innerHTML =
+      '<span class="text-red-400 text-sm">Could not load chart data.</span>';
+  }
+}
+
+// ── All submissions table ──────────────────────────────────────────────────────
+async function loadAllSubmissions() {
+  try {
+    allSubmissions = await api('/api/prices/admin-all/?limit=100');
+    renderTable();
+  } catch {
+    document.getElementById('submissions-table-body').innerHTML =
+      '<tr><td colspan="7" class="text-red-400 text-center py-6 text-sm">Could not load submissions.</td></tr>';
+  }
+}
+
+function renderTable() {
+  const filter = document.getElementById('filter-status').value;
+  const search = document.getElementById('filter-search').value.toLowerCase();
+  const tbody  = document.getElementById('submissions-table-body');
+  const footer = document.getElementById('table-footer');
+
+  let rows = allSubmissions.filter(s => {
+    if (filter === 'pending'  && s.isApproved)  return false;
+    if (filter === 'approved' && !s.isApproved) return false;
+    if (search && ![s.itemName, s.storeName, s.username].some(v => v.toLowerCase().includes(search))) return false;
+    return true;
+  });
+
+  footer.textContent = `Showing ${rows.length} of ${allSubmissions.length} submissions`;
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-slate-400 text-center py-8 text-sm">No submissions match the filter.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(s => {
+    const statusBadge = s.isApproved
+      ? '<span class="badge bg-emerald-100 text-emerald-700">✅ Approved</span>'
+      : '<span class="badge bg-amber-100 text-amber-700">⏳ Pending</span>';
+
+    const approveBtn = !s.isApproved
+      ? `<button class="btn-approve !text-xs !px-2" onclick="tableApprove(${s.id}, this)">✅</button>`
+      : '';
+
+    return `
+    <tr class="border-b border-slate-50 hover:bg-slate-50 transition" id="trow-${s.id}">
+      <td class="py-3 pr-4">
+        <div class="font-medium text-slate-800 text-sm">${s.itemName}</div>
+        <div class="text-xs text-slate-400">${s.itemCategory}</div>
+      </td>
+      <td class="py-3 pr-4 text-slate-600 text-sm">${s.storeName}</td>
+      <td class="py-3 pr-4 font-bold text-slate-800 text-sm">${naira(s.price)}</td>
+      <td class="py-3 pr-4 text-slate-600 text-sm">${s.username}</td>
+      <td class="py-3 pr-4">${statusBadge}</td>
+      <td class="py-3 pr-4 text-xs text-slate-400 whitespace-nowrap">${timeSince(new Date(s.createdAt))}</td>
+      <td class="py-3">
+        <div class="flex items-center gap-1">
+          ${approveBtn}
+          <button onclick="openEditModal(${s.id})" title="Edit"
+            class="w-7 h-7 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition text-sm">✏️</button>
+          <button onclick="tableDelete(${s.id})" title="Delete"
+            class="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition text-sm">🗑️</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function tableApprove(id, btn) {
+  const row = document.getElementById(`trow-${id}`);
+  if (row) row.style.opacity = '0.4';
+  btn.disabled = true;
+  try {
+    const res = await api(`/api/prices/${id}/approve/`, { method: 'POST' });
+    const idx = allSubmissions.findIndex(s => s.id === id);
+    if (idx !== -1) allSubmissions[idx].isApproved = true;
+    renderTable(); loadStats(); loadPending(); updateNav();
+    showToast(`✅ Approved — ${res.username} now has ${res.newPoints} pts`, 'green');
+  } catch {
+    if (row) row.style.opacity = '1';
+    btn.disabled = false;
+    showToast('❌ Approval failed.', 'red');
+  }
+}
+
+async function tableDelete(id) {
+  if (!confirm('Permanently delete this submission? This cannot be undone.')) return;
+  const row = document.getElementById(`trow-${id}`);
+  if (row) row.style.opacity = '0.4';
+  try {
+    await api(`/api/prices/${id}/`, { method: 'DELETE' });
+    allSubmissions = allSubmissions.filter(s => s.id !== id);
+    renderTable(); loadStats(); loadPending(); updateNav();
+    showToast('🗑️ Submission deleted.', 'gray');
+  } catch {
+    if (row) row.style.opacity = '1';
+    showToast('❌ Delete failed.', 'red');
+  }
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function timeSince(date) {
+  const diff = Math.floor((Date.now() - date) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+  return `${Math.floor(diff/86400)}d ago`;
+}
+
+function showToast(msg, color) {
+  const palette = { green: 'bg-emerald-600', red: 'bg-red-600', gray: 'bg-slate-600' };
+  const t = document.createElement('div');
+  t.className = `fixed bottom-6 right-6 z-50 ${palette[color] || 'bg-slate-700'} text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-lg transition-opacity`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 3200);
+}
+</script>
+{% endblock %}
