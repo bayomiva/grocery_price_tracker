@@ -2,135 +2,91 @@
 {% block title %}Compare Prices — LocalPrice Nigeria{% endblock %}
 
 {% block content %}
-
-<!-- Page header -->
-<div class="mb-6">
-  <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Prices &amp; Markets</h1>
-  <p class="text-slate-500 text-sm mt-1">Find markets near you <em>or</em> compare an item's price by location.</p>
-</div>
+<h1 class="text-2xl font-bold text-gray-800 mb-1">Prices &amp; Markets</h1>
+<p class="text-gray-500 mb-6">Find markets near you <em>or</em> compare an item's price across all stores.</p>
 
 <!-- ══════════════════════════════════════════════════════════════
-     GPS / NEARBY MARKETS
+     SECTION 1 — GPS / NEARBY MARKETS
      ══════════════════════════════════════════════════════════════ -->
-<div class="card mb-5">
-  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-    <div class="flex items-start gap-3">
-      <div class="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-700 shrink-0 text-lg mt-0.5">📍</div>
-      <div>
-        <h2 class="text-base font-bold text-slate-800">Markets Near Me</h2>
-        <p class="text-xs text-slate-500 mt-0.5">Uses your device's GPS to find nearby Nigerian markets.</p>
-      </div>
+<div class="card mb-4">
+  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+    <div>
+      <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+        <span class="text-green-600">📍</span> Markets Near Me
+      </h2>
+      <p class="text-sm text-gray-500 mt-0.5">Uses your device's GPS to find nearby Nigerian markets.</p>
     </div>
     <button id="gps-btn" onclick="requestGPS()"
-      class="btn-primary flex items-center gap-2 whitespace-nowrap shrink-0">
+      class="btn-primary flex items-center gap-2 whitespace-nowrap">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
       </svg>
       Use My Location
     </button>
   </div>
-  <div id="gps-status" class="hidden mt-3 text-sm font-medium px-4 py-2.5 rounded-xl"></div>
+  <!-- GPS status bar -->
+  <div id="gps-status" class="hidden mt-3 text-sm font-medium px-3 py-2 rounded-lg"></div>
 </div>
 
-<!-- Map -->
+<!-- Map (hidden until GPS or comparison activates it) -->
+<!-- NOTE: isolation:isolate keeps Leaflet's high z-indices contained
+     so they never overlap the sticky navbar -->
 <div id="map-container" class="mb-6" style="display:none; position:relative; isolation:isolate;">
-  <div id="map" class="rounded-2xl overflow-hidden shadow-sm border border-slate-100" style="height:400px; z-index:0;"></div>
-  <div id="map-legend" class="flex items-center gap-4 mt-2.5 text-xs text-slate-500 px-1" style="display:none;">
-    <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-full bg-blue-500"></span>You</span>
-    <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-full bg-emerald-600"></span>Cheapest / Nearest</span>
-    <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-full bg-slate-400"></span>Other stores</span>
+  <div id="map" class="rounded-xl overflow-hidden shadow" style="height:400px; z-index:0;"></div>
+  <div id="map-legend" class="flex items-center gap-4 mt-2 text-xs text-gray-500" style="display:none;">
+    <span class="flex items-center gap-1.5">
+      <span class="inline-block w-3 h-3 rounded-full bg-blue-500"></span>You
+    </span>
+    <span class="flex items-center gap-1.5">
+      <span class="inline-block w-3 h-3 rounded-full bg-green-600"></span>Cheapest / Nearest
+    </span>
+    <span class="flex items-center gap-1.5">
+      <span class="inline-block w-3 h-3 rounded-full bg-gray-500"></span>Other stores
+    </span>
   </div>
 </div>
 
-<!-- Nearby stores list -->
+<!-- Nearby stores list (GPS mode) -->
 <div id="nearby-list" class="hidden mb-8">
-  <h3 class="text-base font-bold text-slate-700 mb-3">Nearby Markets</h3>
+  <h3 class="text-base font-bold text-gray-700 mb-3">Nearby Markets</h3>
   <div id="nearby-cards"></div>
 </div>
 
 <!-- Divider -->
-<div class="flex items-center gap-4 my-7">
-  <div class="flex-1 border-t border-slate-200"></div>
-  <span class="text-xs text-slate-400 font-semibold uppercase tracking-wider">compare by item &amp; location</span>
-  <div class="flex-1 border-t border-slate-200"></div>
+<div class="flex items-center gap-4 my-8">
+  <div class="flex-1 border-t border-gray-200"></div>
+  <span class="text-sm text-gray-400 font-medium">or compare by item</span>
+  <div class="flex-1 border-t border-gray-200"></div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════
-     ITEM SELECTOR
+     SECTION 2 — ITEM PRICE COMPARISON
      ══════════════════════════════════════════════════════════════ -->
-<h2 class="text-lg font-bold text-slate-800 mb-3">Compare by Item</h2>
+<h2 class="text-lg font-bold text-gray-800 mb-3">Compare by Item</h2>
 
-<div class="card mb-4">
-  <div class="flex items-center gap-3 mb-3 hidden" id="item-preview-row">
-    <img id="item-preview-img" src="" alt=""
-      class="w-14 h-14 rounded-xl object-cover border border-slate-100 shrink-0" loading="lazy"
-      onerror="this.classList.add('hidden');document.getElementById('item-preview-emoji').classList.remove('hidden')">
-    <div id="item-preview-emoji" class="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center text-2xl shrink-0 hidden"></div>
-    <div>
-      <div id="item-preview-name" class="font-semibold text-slate-800 text-sm"></div>
-      <div id="item-preview-cat" class="text-xs text-slate-400 mt-0.5"></div>
-    </div>
-  </div>
+<!-- Item selector -->
+<div class="card mb-6">
   <div class="flex flex-col sm:flex-row gap-3">
-    <select id="item-select" onchange="onItemChange()" class="form-input flex-1">
+    <select id="item-select" class="form-input flex-1">
       <option value="">Loading items…</option>
     </select>
-    <button onclick="loadComparison()" class="btn-primary px-6 whitespace-nowrap">Compare</button>
+    <button onclick="loadComparison()" class="btn-primary px-6">Compare</button>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════
-     LOCATION FILTER
-     ══════════════════════════════════════════════════════════════ -->
-<div class="card mb-5" id="location-filter-card">
-  <div class="flex items-center gap-2 mb-4">
-    <span class="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center text-base shrink-0">🗺️</span>
-    <h3 class="font-bold text-slate-800 text-sm">Filter by Location</h3>
-    <span id="filter-badge" class="hidden badge bg-blue-100 text-blue-700 ml-auto text-xs"></span>
-  </div>
-
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-    <!-- State dropdown -->
-    <div class="sm:col-span-2">
-      <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">State</label>
-      <select id="state-filter" onchange="onStateFilterChange()" class="form-input">
-        <option value="">🇳🇬 All Nigeria (36 states + FCT)</option>
-      </select>
-    </div>
-    <!-- Sort -->
-    <div>
-      <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Sort by</label>
-      <select id="sort-select" onchange="renderResults()" class="form-input">
-        <option value="price">💰 Price (cheapest first)</option>
-        <option value="distance">📏 Distance (nearest first)</option>
-      </select>
-    </div>
-  </div>
-
-  <!-- Active location summary -->
-  <div id="location-summary" class="hidden mt-3 flex items-center justify-between gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5">
-    <span id="location-summary-text" class="text-sm font-medium text-blue-800"></span>
-    <button onclick="clearLocationFilter()"
-      class="text-xs text-blue-600 hover:text-blue-800 font-semibold whitespace-nowrap transition">✕ Clear</button>
-  </div>
-</div>
-
-<!-- Stats strip (recalculated for filtered view) -->
-<div id="stats-strip" class="grid grid-cols-3 gap-3 mb-5" style="display:none;">
+<!-- Stats strip — uses style display to avoid conflict with grid class -->
+<div id="stats-strip" class="grid grid-cols-3 gap-4 mb-6" style="display:none;">
   <div class="card text-center">
-    <div class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">Lowest</div>
-    <div id="stat-low" class="text-xl font-extrabold text-emerald-700"></div>
-    <div id="stat-low-store" class="text-xs text-slate-400 mt-0.5 truncate"></div>
+    <div class="text-xs text-gray-500 uppercase font-semibold mb-1">Lowest</div>
+    <div id="stat-low" class="text-2xl font-bold text-green-700"></div>
   </div>
   <div class="card text-center">
-    <div class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">Average</div>
-    <div id="stat-avg" class="text-xl font-extrabold text-amber-600"></div>
-    <div id="stat-count" class="text-xs text-slate-400 mt-0.5"></div>
+    <div class="text-xs text-gray-500 uppercase font-semibold mb-1">Average</div>
+    <div id="stat-avg" class="text-2xl font-bold text-yellow-600"></div>
   </div>
   <div class="card text-center">
-    <div class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">Highest</div>
-    <div id="stat-high" class="text-xl font-extrabold text-red-500"></div>
-    <div id="stat-high-store" class="text-xs text-slate-400 mt-0.5 truncate"></div>
+    <div class="text-xs text-gray-500 uppercase font-semibold mb-1">Highest</div>
+    <div id="stat-high" class="text-2xl font-bold text-red-500"></div>
   </div>
 </div>
 
@@ -140,391 +96,329 @@
 
 {% block scripts %}
 <script>
+// ── State ──────────────────────────────────────────────────────────────────────
 let map = null;
 let userMarker = null;
 let userCircle = null;
 let storeMarkers = [];
 let userLatLng = null;
 
-// Cached data
-let allPrices = [];        // All prices from last API call (unfiltered)
-let statesData = [];       // [{state, storeCount, centerLat, centerLng}]
-let activeStateLoc = null; // {lat, lng} of selected state center (for virtual distance)
-
 // ── Map helpers ────────────────────────────────────────────────────────────────
-function showMapContainer() { document.getElementById('map-container').style.display = 'block'; }
+function showMapContainer() {
+  const el = document.getElementById('map-container');
+  el.style.display = 'block';
+}
 
 function ensureMap() {
-  if (map) { setTimeout(() => map.invalidateSize(), 150); return; }
+  if (map) {
+    // Always invalidate after the container becomes visible
+    setTimeout(() => map.invalidateSize(), 150);
+    return;
+  }
   map = L.map('map', { zoomControl: true }).setView([9.0, 7.5], 6);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    subdomains: 'abcd', maxZoom: 20,
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 18,
   }).addTo(map);
+  // Invalidate after the map initialises so tiles load at correct size
   setTimeout(() => map.invalidateSize(), 150);
 }
 
 // ── GPS ────────────────────────────────────────────────────────────────────────
 function requestGPS() {
-  if (!navigator.geolocation) { setGPSStatus('error', '⚠️ Geolocation not supported by your browser.'); return; }
+  if (!navigator.geolocation) {
+    setGPSStatus('error', '⚠️ Geolocation is not supported by your browser.');
+    return;
+  }
   const btn = document.getElementById('gps-btn');
   btn.disabled = true;
   btn.innerHTML = `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="60" stroke-linecap="round"/></svg> Locating…`;
+    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"
+      stroke-dasharray="60" stroke-linecap="round"/></svg> Locating…`;
   setGPSStatus('info', '🛰️ Requesting your location…');
-  navigator.geolocation.getCurrentPosition(onGPSSuccess, onGPSError, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+
+  navigator.geolocation.getCurrentPosition(
+    onGPSSuccess, onGPSError,
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+  );
 }
 
 function setGPSStatus(type, msg) {
   const el = document.getElementById('gps-status');
-  el.className = 'mt-3 text-sm font-medium px-4 py-2.5 rounded-xl';
-  const palette = { info:'bg-blue-50 text-blue-700', error:'bg-red-50 text-red-700', success:'bg-emerald-50 text-emerald-700', warn:'bg-amber-50 text-amber-700' };
+  el.className = 'mt-3 text-sm font-medium px-3 py-2 rounded-lg';
+  const palette = {
+    info:    'bg-blue-50 text-blue-700',
+    error:   'bg-red-50 text-red-700',
+    success: 'bg-green-50 text-green-700',
+    warn:    'bg-yellow-50 text-yellow-700',
+  };
   el.classList.add(...(palette[type] || palette.info).split(' '));
   el.textContent = msg;
-  el.classList.remove('hidden');
 }
 
 async function onGPSSuccess(pos) {
   const { latitude: lat, longitude: lng, accuracy } = pos.coords;
   userLatLng = { lat, lng };
-  activeStateLoc = null; // real GPS overrides virtual
 
   const btn = document.getElementById('gps-btn');
   btn.disabled = false;
   btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
-    viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg> Update Location`;
+    viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/>
+    <path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg> Update Location`;
 
-  setGPSStatus('success', `✅ Location found (±${Math.round(accuracy)}m). Searching for nearby markets…`);
+  const accM = Math.round(accuracy);
+  setGPSStatus('success', `✅ Location found (±${accM}m accuracy). Searching for nearby markets…`);
+
+  // 1. Show container FIRST so Leaflet measures real size
   showMapContainer();
   document.getElementById('map-legend').style.display = 'flex';
+
+  // 2. Init / refresh map
   ensureMap();
 
+  // 3. Place user marker
   if (userMarker) { userMarker.remove(); userCircle.remove(); }
-  userMarker = L.marker([lat, lng], { icon: L.divIcon({
+  const userIcon = L.divIcon({
     className: '',
-    html: `<div style="width:18px;height:18px;border-radius:50%;background:#3b82f6;border:3px solid #fff;box-shadow:0 0 0 3px rgba(59,130,246,.4)"></div>`,
+    html: `<div style="width:18px;height:18px;border-radius:50%;background:#3b82f6;
+             border:3px solid #fff;box-shadow:0 0 0 3px rgba(59,130,246,.4)"></div>`,
     iconSize: [18, 18], iconAnchor: [9, 9],
-  }) }).addTo(map).bindPopup(`<b>📍 You are here</b><br/>Accuracy: ±${Math.round(accuracy)}m`);
-  userCircle = L.circle([lat, lng], { radius: accuracy, color: '#3b82f6', weight: 1, fillOpacity: 0.07 }).addTo(map);
+  });
+  userMarker = L.marker([lat, lng], { icon: userIcon, zIndexOffset: 1000 })
+    .addTo(map).bindPopup(`<b>📍 You are here</b><br/>Accuracy: ±${accM}m`);
+  userCircle = L.circle([lat, lng], {
+    radius: accuracy, color: '#3b82f6', weight: 1, fillOpacity: 0.07
+  }).addTo(map);
 
+  // 4. Fetch nearby stores
   try {
     const nearby = await api(`/api/stores/nearby/?lat=${lat}&lng=${lng}&radius=200`);
     renderNearbyStores(nearby, lat, lng);
-  } catch { setGPSStatus('error', '❌ Could not fetch nearby markets. Please try again.'); }
-
-  if (allPrices.length) renderResults();
+  } catch {
+    setGPSStatus('error', '❌ Could not fetch nearby markets. Please try again.');
+  }
 }
 
 function onGPSError(err) {
   const btn = document.getElementById('gps-btn');
   btn.disabled = false;
   btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
-    viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg> Use My Location`;
-  const msgs = { 1:'❌ Location access denied. Please allow location in your browser settings.', 2:'❌ Your location could not be determined.', 3:'❌ Location request timed out.' };
-  setGPSStatus('error', msgs[err.code] || '❌ Geolocation error.');
+    viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/>
+    <path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg> Use My Location`;
+  const msgs = {
+    1: '❌ Location access denied. Please allow location in your browser settings.',
+    2: '❌ Your location could not be determined. Try again.',
+    3: '❌ Location request timed out. Try again.',
+  };
+  setGPSStatus('error', msgs[err.code] || '❌ Geolocation error. Try again.');
 }
 
 function renderNearbyStores(stores, userLat, userLng) {
-  storeMarkers.forEach(m => m.remove()); storeMarkers = [];
-  const nearbyListEl = document.getElementById('nearby-list');
+  storeMarkers.forEach(m => m.remove());
+  storeMarkers = [];
+
+  const nearbyListEl  = document.getElementById('nearby-list');
   const nearbyCardsEl = document.getElementById('nearby-cards');
   nearbyListEl.classList.remove('hidden');
+
   if (!stores.length) {
-    nearbyCardsEl.innerHTML = `<div class="card text-center py-8 text-slate-400 text-sm">No markets found within 200 km.</div>`;
-    map.setView([userLat, userLng], 8); return;
+    nearbyCardsEl.innerHTML = `
+      <div class="card text-center py-8 text-gray-400">
+        No markets found within 200 km. Try widening your search or check your location.
+      </div>`;
+    map.setView([userLat, userLng], 8);
+    return;
   }
+
   const bounds = [[userLat, userLng]];
+
   stores.forEach((s, i) => {
     const isNearest = i === 0;
-    const dl = s.distanceKm < 1 ? `${Math.round(s.distanceKm * 1000)}m` : `${s.distanceKm}km`;
-    const colour = isNearest ? '#059669' : '#6b7280';
-    const m = L.marker([s.latitude, s.longitude], { icon: L.divIcon({
+    const colour = isNearest ? '#16a34a' : '#6b7280';
+    const distLabel = s.distanceKm < 1
+      ? `${Math.round(s.distanceKm * 1000)}m`
+      : `${s.distanceKm}km`;
+
+    const icon = L.divIcon({
       className: '',
-      html: `<div style="background:${colour};color:#fff;padding:3px 8px;border-radius:9999px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.3)">${dl}</div>`,
+      html: `<div style="background:${colour};color:#fff;padding:3px 8px;border-radius:9999px;
+               font-size:11px;font-weight:700;white-space:nowrap;
+               box-shadow:0 1px 4px rgba(0,0,0,.3)">${distLabel}</div>`,
       iconAnchor: [0, 0],
-    }) }).addTo(map).bindPopup(`<b>${s.name}</b><br/>📍 ${s.address}<br/>📏 ${dl} away`);
-    storeMarkers.push(m); bounds.push([s.latitude, s.longitude]);
+    });
+    const marker = L.marker([s.latitude, s.longitude], { icon })
+      .addTo(map)
+      .bindPopup(`<b>${s.name}</b><br/>📍 ${s.address}<br/>📏 ${distLabel} away`);
+    storeMarkers.push(marker);
+    bounds.push([s.latitude, s.longitude]);
   });
+
   map.fitBounds(bounds, { padding: [40, 40] });
+
   nearbyCardsEl.innerHTML = stores.map((s, i) => {
     const isNearest = i === 0;
-    const dl = s.distanceKm < 1 ? `${Math.round(s.distanceKm * 1000)} m` : `${s.distanceKm} km`;
+    const distLabel = s.distanceKm < 1
+      ? `${Math.round(s.distanceKm * 1000)} m`
+      : `${s.distanceKm} km`;
     return `
-    <div class="card mb-3 flex items-center justify-between hover:shadow-md transition-all ${isNearest ? 'ring-2 ring-emerald-400' : ''}">
+    <div class="card mb-3 flex items-center justify-between hover:shadow-md transition
+      ${isNearest ? 'ring-2 ring-green-400' : ''}">
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 flex-wrap">
-          <span class="font-semibold text-slate-800 text-sm">${s.name}</span>
-          ${isNearest ? '<span class="badge bg-emerald-100 text-emerald-700">📍 Nearest</span>' : ''}
+          <span class="font-semibold text-gray-800">${s.name}</span>
+          ${isNearest ? '<span class="badge bg-green-100 text-green-700">📍 Nearest</span>' : ''}
         </div>
-        <div class="text-xs text-slate-500 truncate mt-0.5">${s.address}</div>
+        <div class="text-sm text-gray-500 truncate mt-0.5">${s.address}</div>
       </div>
       <div class="text-right ml-4 shrink-0">
-        <div class="text-lg font-bold ${isNearest ? 'text-emerald-700' : 'text-slate-700'}">${dl}</div>
-        <div class="text-xs text-slate-400">away</div>
+        <div class="text-lg font-bold ${isNearest ? 'text-green-700' : 'text-gray-700'}">${distLabel}</div>
+        <div class="text-xs text-gray-400">away</div>
       </div>
     </div>`;
   }).join('');
-  setGPSStatus('success', `✅ Found ${stores.length} market${stores.length !== 1 ? 's' : ''} within 200 km.`);
+
+  const count = stores.length;
+  setGPSStatus('success', `✅ Found ${count} market${count !== 1 ? 's' : ''} within 200 km.`);
 }
 
-// ── Emoji / thumbnail helpers ──────────────────────────────────────────────────
-const CAT_EMOJI = { Staples:'🌾', Vegetables:'🥦', Fruits:'🍎', Oils:'🫙', Noodles:'🍜', Beverages:'🧃', Dairy:'🥛', Bakery:'🍞' };
-
-function imgFallback(el) {
-  const emoji = el.getAttribute('data-emoji') || '🛒';
-  const d = document.createElement('div');
-  d.className = 'w-14 h-14 rounded-xl shrink-0 bg-slate-100 flex items-center justify-center text-2xl';
-  d.textContent = emoji;
-  el.replaceWith(d);
-}
-
-function thumbHtml(imageUrl, category) {
-  const cls = 'w-14 h-14 rounded-xl shrink-0';
-  const emoji = CAT_EMOJI[category] || '🛒';
-  if (imageUrl) {
-    return `<img src="${imageUrl}" alt="${category}" class="${cls} object-cover border border-slate-100" loading="lazy" data-emoji="${emoji}" onerror="imgFallback(this)">`;
-  }
-  return `<div class="${cls} bg-slate-100 flex items-center justify-center text-2xl">${emoji}</div>`;
-}
-
-// ── Item selector ─────────────────────────────────────────────────────────────
-let itemsMap = {};
-
+// ── Item comparison ────────────────────────────────────────────────────────────
 (async function initItems() {
   try {
     const items = await api('/api/items/');
-    items.forEach(i => { itemsMap[i.id] = i; });
     const byCategory = {};
     items.forEach(i => { (byCategory[i.category] = byCategory[i.category] || []).push(i); });
     const sel = document.getElementById('item-select');
     sel.innerHTML = '<option value="">— Choose an item —</option>';
     Object.entries(byCategory).forEach(([cat, its]) => {
-      const og = document.createElement('optgroup'); og.label = cat;
-      its.forEach(i => { const o = document.createElement('option'); o.value = i.id; o.textContent = i.name; og.appendChild(o); });
+      const og = document.createElement('optgroup');
+      og.label = cat;
+      its.forEach(i => {
+        const o = document.createElement('option');
+        o.value = i.id; o.textContent = i.name; og.appendChild(o);
+      });
       sel.appendChild(og);
     });
-    if (items.length) { sel.value = items[0].id; onItemChange(); loadComparison(); }
-  } catch { document.getElementById('results').innerHTML = '<p class="text-red-500 text-sm">Could not load items.</p>'; }
+    if (items.length) { sel.value = items[0].id; loadComparison(); }
+  } catch {
+    document.getElementById('results').innerHTML =
+      '<p class="text-red-500">Could not load items.</p>';
+  }
 })();
 
-function onItemChange() {
-  const item = itemsMap[document.getElementById('item-select').value];
-  const row = document.getElementById('item-preview-row');
-  if (!item) { row.classList.add('hidden'); return; }
-  row.classList.remove('hidden');
-  document.getElementById('item-preview-name').textContent = item.name;
-  document.getElementById('item-preview-cat').textContent = item.category;
-  const img = document.getElementById('item-preview-img');
-  const emoj = document.getElementById('item-preview-emoji');
-  if (item.image_url) {
-    img.src = item.image_url; img.alt = item.name;
-    img.classList.remove('hidden'); emoj.classList.add('hidden');
-  } else {
-    img.classList.add('hidden');
-    emoj.textContent = CAT_EMOJI[item.category] || '🛒';
-    emoj.classList.remove('hidden');
-  }
-}
-
-// ── Location filter ───────────────────────────────────────────────────────────
-(async function initStates() {
-  try {
-    statesData = await api('/api/stores/states/');
-    const sel = document.getElementById('state-filter');
-    statesData.forEach(s => {
-      const o = document.createElement('option');
-      o.value = s.state;
-      o.textContent = `${s.state}  (${s.storeCount} market${s.storeCount !== 1 ? 's' : ''})`;
-      sel.appendChild(o);
-    });
-  } catch {}
-})();
-
-function onStateFilterChange() {
-  const state = document.getElementById('state-filter').value;
-  const summaryEl = document.getElementById('location-summary');
-  const summaryTxt = document.getElementById('location-summary-text');
-  const badge = document.getElementById('filter-badge');
-
-  if (state) {
-    const sd = statesData.find(s => s.state === state);
-    activeStateLoc = sd ? { lat: sd.centerLat, lng: sd.centerLng } : null;
-    summaryTxt.textContent = `Showing prices in ${state}`;
-    summaryEl.classList.remove('hidden');
-    badge.textContent = state;
-    badge.classList.remove('hidden');
-  } else {
-    activeStateLoc = null;
-    summaryEl.classList.add('hidden');
-    badge.classList.add('hidden');
-  }
-  renderResults();
-}
-
-function clearLocationFilter() {
-  document.getElementById('state-filter').value = '';
-  onStateFilterChange();
-}
-
-// ── Load comparison data ───────────────────────────────────────────────────────
 async function loadComparison() {
   const itemId = document.getElementById('item-select').value;
   if (!itemId) return;
 
   const resultsEl = document.getElementById('results');
-  resultsEl.innerHTML = '<div class="text-center py-10 text-slate-400 text-sm animate-pulse">Loading prices…</div>';
+  resultsEl.innerHTML = '<div class="text-center py-10 text-gray-400">Loading prices…</div>';
   document.getElementById('stats-strip').style.display = 'none';
-  allPrices = [];
 
   try {
-    allPrices = await api(`/api/prices/compare/?item=${itemId}`);
-    if (!allPrices.length) {
-      resultsEl.innerHTML = '<div class="card text-center text-slate-400 py-8 text-sm">No prices reported for this item yet.</div>';
+    const [prices, stats, stores] = await Promise.all([
+      api(`/api/prices/compare/?item=${itemId}`),
+      api(`/api/prices/stats/?item=${itemId}`),
+      api('/api/stores/'),
+    ]);
+
+    if (!prices.length) {
+      resultsEl.innerHTML =
+        '<div class="card text-center text-gray-400 py-8">No prices reported for this item yet.</div>';
       return;
     }
-    renderResults();
-  } catch {
-    resultsEl.innerHTML = '<p class="text-red-500 text-sm">Could not load price comparison.</p>';
-  }
-}
 
-// ── Render (filtering + sorting happen here) ───────────────────────────────────
-function renderResults() {
-  if (!allPrices.length) return;
+    // Stats strip
+    document.getElementById('stat-low').textContent  = naira(stats.lowestPrice);
+    document.getElementById('stat-avg').textContent  = naira(Math.round(stats.averagePrice));
+    document.getElementById('stat-high').textContent = naira(stats.highestPrice);
+    document.getElementById('stats-strip').style.display = 'grid';
 
-  const resultsEl = document.getElementById('results');
-  const selectedState = document.getElementById('state-filter').value;
-  const sortBy = document.getElementById('sort-select').value;
+    const storeMap = {};
+    stores.forEach(s => { storeMap[s.id] = s; });
+    const maxPrice = stats.highestPrice;
 
-  // 1. Filter by state
-  let visible = selectedState
-    ? allPrices.filter(p => p.storeState === selectedState)
-    : [...allPrices];
+    resultsEl.innerHTML = prices.map((p, i) => {
+      const pct = maxPrice ? Math.round((p.price / maxPrice) * 100) : 100;
+      const cheapTag = p.isCheapest
+        ? '<span class="badge bg-green-100 text-green-700 ml-2">🏆 Cheapest</span>' : '';
 
-  if (!visible.length) {
-    resultsEl.innerHTML = `
-      <div class="card text-center py-8">
-        <div class="text-3xl mb-2">🔍</div>
-        <div class="font-semibold text-slate-700 mb-1">No prices in ${selectedState}</div>
-        <div class="text-slate-400 text-sm mb-4">No one has submitted prices for this item in this state yet.</div>
-        <button onclick="clearLocationFilter()" class="btn-secondary text-sm">Show all Nigeria</button>
-      </div>`;
-    document.getElementById('stats-strip').style.display = 'none';
-    return;
-  }
+      let distTag = '';
+      if (userLatLng) {
+        const s = storeMap[p.storeId];
+        if (s) {
+          const d = haversineJS(userLatLng.lat, userLatLng.lng, s.latitude, s.longitude);
+          const dl = d < 1 ? `${Math.round(d * 1000)}m` : `${d.toFixed(1)}km`;
+          distTag = `<span class="badge bg-blue-50 text-blue-600 ml-2">📏 ${dl}</span>`;
+        }
+      }
 
-  // 2. Determine reference location for distance
-  const refLoc = userLatLng || activeStateLoc || null;
-
-  // 3. Attach distance to each row
-  if (refLoc) {
-    visible.forEach(p => {
-      p._dist = haversineJS(refLoc.lat, refLoc.lng, p.storeLat, p.storeLng);
-    });
-  } else {
-    visible.forEach(p => { p._dist = null; });
-  }
-
-  // 4. Sort
-  if (sortBy === 'distance' && refLoc) {
-    visible.sort((a, b) => a._dist - b._dist);
-  } else {
-    visible.sort((a, b) => a.price - b.price);
-  }
-
-  // 5. Recalculate stats for visible rows
-  const prices = visible.map(p => p.price);
-  const minP = Math.min(...prices);
-  const maxP = Math.max(...prices);
-  const avgP = prices.reduce((s, v) => s + v, 0) / prices.length;
-  const minStore = visible.find(p => p.price === minP);
-  const maxStore = visible.find(p => p.price === maxP);
-
-  document.getElementById('stat-low').textContent  = naira(minP);
-  document.getElementById('stat-avg').textContent  = naira(Math.round(avgP));
-  document.getElementById('stat-high').textContent = naira(maxP);
-  document.getElementById('stat-low-store').textContent  = minStore ? minStore.storeName : '';
-  document.getElementById('stat-count').textContent     = `${visible.length} store${visible.length !== 1 ? 's' : ''}`;
-  document.getElementById('stat-high-store').textContent = maxStore ? maxStore.storeName : '';
-  document.getElementById('stats-strip').style.display = 'grid';
-
-  const itemCat = visible[0]?.itemCategory || '';
-  const distLabel = userLatLng ? '📍 from you' : activeStateLoc ? `📍 from ${document.getElementById('state-filter').value}` : null;
-
-  resultsEl.innerHTML = visible.map((p, i) => {
-    const isCheapest = p.price === minP;
-    const pct = maxP ? Math.round((p.price / maxP) * 100) : 100;
-    const cheapTag = isCheapest ? '<span class="badge bg-emerald-100 text-emerald-700 ml-1.5">🏆 Cheapest</span>' : '';
-
-    let distTag = '';
-    if (p._dist !== null) {
-      const dl = p._dist < 1 ? `${Math.round(p._dist * 1000)}m` : `${p._dist.toFixed(1)}km`;
-      distTag = `<span class="badge bg-blue-50 text-blue-600 ml-1.5">📏 ${dl} ${distLabel || ''}</span>`;
-    }
-
-    const locationLine = [p.storeCity, p.storeState].filter(Boolean).join(', ');
-
-    return `
-    <div class="card mb-3 hover:shadow-md transition-all ${isCheapest ? 'ring-2 ring-emerald-400' : ''}">
-      <div class="flex items-center gap-3 mb-3">
-        ${thumbHtml(p.imageUrl, itemCat)}
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center flex-wrap gap-1 mb-0.5">
-            <span class="text-slate-400 font-bold text-xs">#${i + 1}</span>
-            <span class="font-semibold text-slate-800 text-sm">${p.storeName}</span>
+      return `
+      <div class="card mb-3 ${p.isCheapest ? 'ring-2 ring-green-400' : ''}">
+        <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+          <div>
+            <span class="text-gray-500 font-bold text-lg">#${i + 1}</span>
+            <span class="font-semibold text-gray-800 ml-2">${p.storeName}</span>
             ${cheapTag}${distTag}
+            <div class="text-sm text-gray-400 ml-7">📍 ${p.storeAddress}</div>
           </div>
-          <div class="flex items-center gap-1.5 text-xs text-slate-400 mt-0.5 flex-wrap">
-            <span>📍 ${locationLine || p.storeAddress}</span>
+          <div class="text-2xl font-bold ${p.isCheapest ? 'text-green-700' : 'text-gray-800'}">
+            ${naira(p.price)}
           </div>
         </div>
-        <div class="text-xl font-extrabold shrink-0 ${isCheapest ? 'text-emerald-700' : 'text-slate-800'}">
-          ${naira(p.price)}
+        <div class="w-full bg-gray-100 rounded-full h-2">
+          <div class="h-2 rounded-full ${p.isCheapest ? 'bg-green-500' : 'bg-gray-400'}"
+            style="width:${pct}%"></div>
         </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <div class="flex-1 bg-slate-100 rounded-full h-1.5">
-          <div class="h-1.5 rounded-full ${isCheapest ? 'bg-emerald-500' : 'bg-slate-300'}" style="width:${pct}%"></div>
-        </div>
-        <span class="text-xs text-slate-400 shrink-0">${pct}% of high</span>
-      </div>
-    </div>`;
-  }).join('');
+      </div>`;
+    }).join('');
 
-  // 6. Update map markers
-  showMapContainer();
-  document.getElementById('map-legend').style.display = 'flex';
-  ensureMap();
-  storeMarkers.forEach(m => m.remove());
-  storeMarkers = [];
-  const bounds = [];
+    // Comparison map (only when GPS is not active, to avoid overwriting GPS map)
+    if (!userLatLng) {
+      // 1. Show container FIRST
+      showMapContainer();
+      document.getElementById('map-legend').style.display = 'flex';
+      // 2. Init / invalidate map
+      ensureMap();
 
-  visible.forEach(p => {
-    if (!p.storeLat || !p.storeLng) return;
-    const isCheapest = p.price === minP;
-    const colour = isCheapest ? '#059669' : '#6b7280';
-    const m = L.marker([p.storeLat, p.storeLng], { icon: L.divIcon({
-      className: '',
-      html: `<div style="background:${colour};color:#fff;padding:3px 7px;border-radius:9999px;font-size:12px;font-weight:700;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.3)">₦${Number(p.price).toLocaleString()}</div>`,
-      iconAnchor: [0, 0],
-    }) }).addTo(map)
-      .bindPopup(`<strong>${p.storeName}</strong><br/>📍 ${[p.storeCity, p.storeState].filter(Boolean).join(', ')}<br/>₦${Number(p.price).toLocaleString()}${isCheapest ? '<br/><span style="color:#059669;font-weight:bold">🏆 Cheapest</span>' : ''}`);
-    storeMarkers.push(m);
-    bounds.push([p.storeLat, p.storeLng]);
-  });
+      storeMarkers.forEach(m => m.remove());
+      storeMarkers = [];
+      const bounds = [];
 
-  if (bounds.length) {
-    if (refLoc) bounds.push([refLoc.lat, refLoc.lng]);
-    map.fitBounds(bounds, { padding: [30, 30] });
+      prices.forEach(p => {
+        const s = storeMap[p.storeId];
+        if (!s || !s.latitude || !s.longitude) return;
+        const colour = p.isCheapest ? '#16a34a' : '#6b7280';
+        const icon = L.divIcon({
+          className: '',
+          html: `<div style="background:${colour};color:#fff;padding:3px 7px;border-radius:9999px;
+                   font-size:12px;font-weight:700;white-space:nowrap;
+                   box-shadow:0 1px 4px rgba(0,0,0,.3)">₦${Number(p.price).toLocaleString()}</div>`,
+          iconAnchor: [0, 0],
+        });
+        const m = L.marker([s.latitude, s.longitude], { icon })
+          .addTo(map)
+          .bindPopup(`<strong>${s.name}</strong><br/>₦${Number(p.price).toLocaleString()}
+            ${p.isCheapest ? '<br/><span style="color:#16a34a;font-weight:bold">🏆 Cheapest</span>' : ''}`);
+        storeMarkers.push(m);
+        bounds.push([s.latitude, s.longitude]);
+      });
+
+      if (bounds.length) map.fitBounds(bounds, { padding: [30, 30] });
+    }
+  } catch {
+    resultsEl.innerHTML = '<p class="text-red-500">Could not load price comparison.</p>';
   }
 }
 
 document.getElementById('item-select').addEventListener('change', loadComparison);
 
-// ── Haversine ──────────────────────────────────────────────────────────────────
+// Client-side Haversine for distance badges
 function haversineJS(lat1, lon1, lat2, lon2) {
-  const R = 6371, dl = (lat2-lat1)*Math.PI/180, dl2 = (lon2-lon1)*Math.PI/180;
-  const a = Math.sin(dl/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dl2/2)**2;
+  const R = 6371;
+  const dlat = (lat2 - lat1) * Math.PI / 180;
+  const dlon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dlat / 2) ** 2
+    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
+    * Math.sin(dlon / 2) ** 2;
   return R * 2 * Math.asin(Math.sqrt(a));
 }
 </script>

@@ -12,15 +12,6 @@ from .models import Price
 from .serializers import PriceSerializer
 
 
-def _img(request, price):
-    """Return absolute image URL: user-uploaded photo first, then the item's curated image."""
-    if price.image:
-        return request.build_absolute_uri(price.image.url)
-    if price.item.image_url:
-        return price.item.image_url
-    return None
-
-
 # ── HTML page views ────────────────────────────────────────────────────────────
 
 def index_page(request):
@@ -62,13 +53,12 @@ class ComparePricesView(APIView):
         if not item_id:
             return Response({'detail': 'item parameter required.'}, status=400)
 
-        state = request.query_params.get('state', '').strip()
-
-        qs = Price.objects.filter(item_id=item_id, is_approved=True)
-        if state:
-            qs = qs.filter(store__state=state)
-
-        prices = qs.select_related('store', 'item').order_by('price')
+        prices = (
+            Price.objects
+            .filter(item_id=item_id, is_approved=True)
+            .select_related('store')
+            .order_by('price')
+        )
         if not prices.exists():
             return Response([])
 
@@ -77,14 +67,8 @@ class ComparePricesView(APIView):
             'storeId': p.store.id,
             'storeName': p.store.name,
             'storeAddress': p.store.address,
-            'storeCity': p.store.city,
-            'storeState': p.store.state,
-            'storeLat': p.store.latitude,
-            'storeLng': p.store.longitude,
             'price': float(p.price),
             'isCheapest': p.price == min_price,
-            'itemCategory': p.item.category,
-            'imageUrl': _img(request, p),
             'submittedAt': p.created_at.isoformat(),
         } for p in prices])
 
@@ -127,7 +111,6 @@ class RecentPricesView(APIView):
             'storeName': p.store.name,
             'price': float(p.price),
             'username': p.user.username,
-            'imageUrl': _img(request, p),
             'createdAt': p.created_at.isoformat(),
         } for p in prices])
 
@@ -146,7 +129,6 @@ class MySubmissionsView(APIView):
             'itemName': p.item.name,
             'storeName': p.store.name,
             'price': float(p.price),
-            'imageUrl': _img(request, p),
             'isApproved': p.is_approved,
             'createdAt': p.created_at.isoformat(),
         } for p in prices])
@@ -184,7 +166,6 @@ class PendingPricesView(APIView):
             'price': float(p.price),
             'username': p.user.username,
             'userId': p.user.id,
-            'imageUrl': _img(request, p),
             'createdAt': p.created_at.isoformat(),
         } for p in prices])
 
@@ -201,15 +182,12 @@ class AdminAllSubmissionsView(APIView):
         )
         return Response([{
             'id': p.id,
-            'itemId': p.item.id,
             'itemName': p.item.name,
             'itemCategory': p.item.category,
-            'storeId': p.store.id,
             'storeName': p.store.name,
             'price': float(p.price),
             'username': p.user.username,
             'userId': p.user.id,
-            'imageUrl': _img(request, p),
             'isApproved': p.is_approved,
             'createdAt': p.created_at.isoformat(),
         } for p in prices])
@@ -247,68 +225,6 @@ class AdminStatsView(APIView):
             'dailyActivity': [{'date': str(d['day']), 'count': d['count']} for d in daily],
             'byCategory': [{'category': d['item__category'], 'count': d['count']} for d in by_category],
         })
-
-
-class PriceAdminDetailView(APIView):
-    """Admin: GET detail, PATCH (edit), or DELETE a price submission."""
-    permission_classes = [permissions.IsAdminUser]
-
-    def get(self, request, pk):
-        price = get_object_or_404(Price, pk=pk)
-        return Response({
-            'id': price.id,
-            'itemId': price.item.id,
-            'itemName': price.item.name,
-            'itemCategory': price.item.category,
-            'storeId': price.store.id,
-            'storeName': price.store.name,
-            'price': float(price.price),
-            'username': price.user.username,
-            'isApproved': price.is_approved,
-            'imageUrl': _img(request, price),
-            'createdAt': price.created_at.isoformat(),
-        })
-
-    def patch(self, request, pk):
-        price = get_object_or_404(Price, pk=pk)
-        data = request.data
-
-        if 'price' in data:
-            try:
-                price.price = float(data['price'])
-            except (ValueError, TypeError):
-                return Response({'detail': 'Invalid price value.'}, status=400)
-        if 'item' in data:
-            price.item_id = int(data['item'])
-        if 'store' in data:
-            price.store_id = int(data['store'])
-        if 'is_approved' in data:
-            was_approved = price.is_approved
-            price.is_approved = bool(data['is_approved'])
-            # Award points when transitioning pending → approved
-            if not was_approved and price.is_approved:
-                price.user.points += 10
-                price.user.save(update_fields=['points'])
-
-        price.save()
-        price.refresh_from_db()
-        return Response({
-            'id': price.id,
-            'itemId': price.item.id,
-            'itemName': price.item.name,
-            'itemCategory': price.item.category,
-            'storeId': price.store.id,
-            'storeName': price.store.name,
-            'price': float(price.price),
-            'username': price.user.username,
-            'isApproved': price.is_approved,
-        })
-
-    def delete(self, request, pk):
-        price = get_object_or_404(Price, pk=pk)
-        info = {'id': price.id, 'itemName': price.item.name, 'storeName': price.store.name}
-        price.delete()
-        return Response({'detail': 'Price submission deleted.', **info})
 
 
 class PriceApproveView(APIView):

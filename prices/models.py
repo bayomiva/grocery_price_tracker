@@ -13,7 +13,6 @@ class Price(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='prices'
     )
     price = models.DecimalField(max_digits=12, decimal_places=2)
-    image = models.ImageField(upload_to='price_photos/', null=True, blank=True)
     is_approved = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

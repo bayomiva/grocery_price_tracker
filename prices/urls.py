@@ -12,7 +12,6 @@ urlpatterns = [
     path('pending/', views.PendingPricesView.as_view()),
     path('admin-all/', views.AdminAllSubmissionsView.as_view()),
     path('admin-stats/', views.AdminStatsView.as_view()),
-    path('<int:pk>/', views.PriceAdminDetailView.as_view()),
     path('<int:pk>/approve/', views.PriceApproveView.as_view()),
     path('<int:pk>/reject/', views.PriceRejectView.as_view()),
 ]
