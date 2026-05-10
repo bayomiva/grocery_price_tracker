@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Login — LocalPrice Nigeria{% endblock %}
+
+{% block body_class %}bg-transparent{% endblock %}
+
+{% block page_background %}
+<div class="fixed inset-0 -z-10" style="background:url('/static/market_bg.png') center/cover no-repeat;"></div>
+<div class="fixed inset-0 -z-10 bg-gradient-to-b from-black/60 via-black/40 to-black/70"></div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-sm mx-auto mt-4 md:mt-10">
+
+  <!-- Logo lockup -->
+  <div class="text-center mb-7">
+    <div class="w-14 h-14 bg-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-900/40 ring-4 ring-white/20">
+      <span class="text-white font-extrabold text-2xl leading-none">₦</span>
+    </div>
+    <h1 class="text-2xl font-extrabold text-white tracking-tight drop-shadow">Welcome back</h1>
+    <p class="text-white/70 text-sm mt-1">Log in to submit and track grocery prices</p>
+  </div>
+
+  <!-- Form card -->
+  <div class="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl shadow-black/40 p-6 border border-white/60">
+    <div id="error-banner" class="hidden bg-red-50 border border-red-100 text-red-700 rounded-xl px-4 py-3 mb-4 text-sm"></div>
+
+    <form id="login-form" class="space-y-4" novalidate>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1.5" for="email">Email address</label>
+        <input class="form-input" type="email" id="email" placeholder="you@example.com" required autocomplete="email" />
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1.5" for="password">Password</label>
+        <input class="form-input" type="password" id="password" placeholder="••••••••" required autocomplete="current-password" />
+      </div>
+      <button type="submit" id="submit-btn" class="btn-primary w-full !py-3 !text-base">
+        Log In
+      </button>
+    </form>
+
+    <p class="text-center text-sm text-slate-500 mt-5">
+      Don't have an account?
+      <a href="/register/" class="text-emerald-600 font-semibold hover:underline">Register here</a>
+    </p>
+  </div>
+
+  <!-- Demo accounts -->
+  <div class="mt-4 p-4 bg-black/30 backdrop-blur-sm rounded-2xl border border-white/20 text-xs text-white/70">
+    <p class="font-semibold text-white/90 mb-1">Demo accounts</p>
+    <p>admin@example.com / admin123</p>
+    <p>alice@example.com / user123</p>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+if (getToken()) window.location.href = '/';
+
+document.getElementById('login-form').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  const btn = document.getElementById('submit-btn');
+  const errBanner = document.getElementById('error-banner');
+  errBanner.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = 'Logging in…';
+  try {
+    const data = await api('/api/accounts/login/', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: document.getElementById('email').value.trim(),
+        password: document.getElementById('password').value,
+      }),
+    });
+    setAuth(data.token, data.user);
+    window.location.href = '/';
+  } catch (err) {
+    const msg = err.data?.detail || err.data?.non_field_errors?.[0] || 'Login failed. Check your credentials.';
+    errBanner.textContent = msg;
+    errBanner.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Log In';
+  }
+});
+</script>
+{% endblock %}

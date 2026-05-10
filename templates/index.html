@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+{% block title %}Home — LocalPrice Nigeria{% endblock %}
+
+{% block content %}
+
+<!-- HERO -->
+<div class="relative overflow-hidden bg-emerald-950 rounded-3xl p-7 md:p-10 mb-7 text-white">
+  <!-- Background pattern -->
+  <div class="absolute inset-0 opacity-10" style="background-image:radial-gradient(circle at 20% 50%, #34d399 0%, transparent 50%), radial-gradient(circle at 80% 20%, #6ee7b7 0%, transparent 40%);"></div>
+
+  <div class="relative">
+    <span class="inline-flex items-center gap-1.5 bg-white/10 border border-white/20 text-emerald-200 text-xs font-semibold px-3 py-1 rounded-full mb-4">
+      <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse inline-block"></span>
+      🇳🇬 Live Nigerian market prices
+    </span>
+    <h1 class="text-3xl md:text-4xl font-extrabold leading-tight mb-3 tracking-tight">
+      Know Before<br class="hidden sm:block"> You Shop
+    </h1>
+    <p class="text-emerald-200 text-base md:text-lg mb-7 max-w-lg leading-relaxed">
+      Real grocery prices from Nigerian local markets — submitted and verified by your community.
+    </p>
+    <div class="flex flex-wrap gap-3">
+      <a href="/compare-prices/"
+        class="bg-white text-emerald-800 font-bold px-5 py-2.5 rounded-xl hover:bg-emerald-50 active:scale-95 transition-all text-sm shadow-sm">
+        Compare Prices
+      </a>
+      <a href="/submit-price/"
+        class="bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-xl hover:bg-emerald-600 active:scale-95 transition-all text-sm border border-emerald-500">
+        Submit a Price
+      </a>
+      <button onclick="quickGPS()" id="hero-gps-btn"
+        class="flex items-center gap-2 bg-white/10 border border-white/20 text-white font-bold px-5 py-2.5 rounded-xl hover:bg-white/20 active:scale-95 transition-all text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
+        </svg>
+        Markets Near Me
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- GPS QUICK PANEL -->
+<div id="gps-panel" class="hidden mb-7">
+  <div class="card">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-700 text-base">📍</div>
+        <h2 class="text-base font-bold text-slate-800">Markets Near You</h2>
+      </div>
+      <button onclick="document.getElementById('gps-panel').classList.add('hidden')"
+        class="text-slate-400 hover:text-slate-600 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 transition text-xl leading-none">&times;</button>
+    </div>
+    <div id="gps-mini-status" class="text-sm text-slate-500 mb-3"></div>
+    <div id="gps-mini-map" class="rounded-xl overflow-hidden mb-3"
+         style="height:260px;display:none;position:relative;isolation:isolate;"></div>
+    <div id="gps-mini-stores"></div>
+    <a href="/compare-prices/" class="text-emerald-600 text-sm mt-3 inline-flex items-center gap-1 hover:underline font-medium">
+      Full map &amp; price comparison
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+      </svg>
+    </a>
+  </div>
+</div>
+
+<!-- ADMIN APPROVAL PANEL (staff only) -->
+<div id="admin-panel" class="hidden mb-7">
+  <div class="card border-l-4 border-amber-400">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">⚙️</span>
+        <h2 class="text-base font-bold text-slate-800">Pending Approvals</h2>
+        <span id="admin-pending-count" class="badge bg-amber-100 text-amber-700"></span>
+      </div>
+      <a href="/admin-dashboard/" class="text-emerald-600 text-sm hover:underline font-medium">
+        Admin Dashboard →
+      </a>
+    </div>
+    <div id="admin-pending-list">
+      <div class="text-slate-400 text-sm text-center py-4 animate-pulse">Loading pending submissions…</div>
+    </div>
+  </div>
+</div>
+
+<!-- STATS STRIP -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-7" id="stats-grid">
+  <div class="card text-center animate-pulse"><div class="h-8 bg-slate-100 rounded mb-2"></div><div class="h-3 bg-slate-50 rounded w-2/3 mx-auto"></div></div>
+  <div class="card text-center animate-pulse"><div class="h-8 bg-slate-100 rounded mb-2"></div><div class="h-3 bg-slate-50 rounded w-2/3 mx-auto"></div></div>
+  <div class="card text-center animate-pulse"><div class="h-8 bg-slate-100 rounded mb-2"></div><div class="h-3 bg-slate-50 rounded w-2/3 mx-auto"></div></div>
+  <div class="card text-center animate-pulse"><div class="h-8 bg-slate-100 rounded mb-2"></div><div class="h-3 bg-slate-50 rounded w-2/3 mx-auto"></div></div>
+</div>
+
+<!-- RECENT PRICES -->
+<div class="mb-4">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-bold text-slate-800">Recent Price Submissions</h2>
+    <a href="/compare-prices/" class="text-emerald-600 text-sm hover:underline font-medium flex items-center gap-1">
+      Compare
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+      </svg>
+    </a>
+  </div>
+  <div id="recent-prices" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="card animate-pulse col-span-3"><div class="h-32 bg-slate-100 rounded-xl mb-3"></div><div class="h-4 bg-slate-100 rounded w-1/2"></div></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(async function init() {
+  const user = getUser();
+
+  if (user && user.is_staff) {
+    document.getElementById('admin-panel').classList.remove('hidden');
+    loadPendingApprovals();
+  }
+
+  try {
+    const s = await api('/api/dashboard/');
+    document.getElementById('stats-grid').innerHTML = `
+      <div class="card text-center">
+        <div class="text-2xl font-extrabold text-emerald-700 mb-1">${s.totalStores}</div>
+        <div class="text-slate-500 text-xs font-medium uppercase tracking-wide">Markets</div>
+      </div>
+      <div class="card text-center">
+        <div class="text-2xl font-extrabold text-emerald-700 mb-1">${s.totalItems}</div>
+        <div class="text-slate-500 text-xs font-medium uppercase tracking-wide">Grocery Items</div>
+      </div>
+      <div class="card text-center">
+        <div class="text-2xl font-extrabold text-emerald-700 mb-1">${s.totalPriceSubmissions.toLocaleString()}</div>
+        <div class="text-slate-500 text-xs font-medium uppercase tracking-wide">Price Reports</div>
+      </div>
+      <div class="card text-center">
+        <div class="text-2xl font-extrabold text-emerald-700 mb-1">${s.totalUsers}</div>
+        <div class="text-slate-500 text-xs font-medium uppercase tracking-wide">Contributors</div>
+      </div>`;
+  } catch {
+    document.getElementById('stats-grid').innerHTML = '<p class="text-red-500 col-span-4 text-sm">Could not load stats.</p>';
+  }
+
+  try {
+    const prices = await api('/api/prices/recent/');
+    if (!prices.length) {
+      document.getElementById('recent-prices').innerHTML =
+        '<p class="text-slate-400 col-span-3 text-center py-10 text-sm">No prices submitted yet. Be the first!</p>';
+      return;
+    }
+    const COLORS = {Staples:'emerald',Vegetables:'lime',Fruits:'orange',Oils:'yellow',Noodles:'red',Beverages:'blue',Dairy:'purple',Bakery:'amber'};
+    const CAT_EMOJI = {Staples:'🌾',Vegetables:'🥦',Fruits:'🍎',Oils:'🫙',Noodles:'🍜',Beverages:'🧃',Dairy:'🥛',Bakery:'🍞'};
+    document.getElementById('recent-prices').innerHTML = prices.map(p => {
+      const c = COLORS[p.itemCategory] || 'slate';
+      const ago = timeSince(new Date(p.createdAt));
+      const emoji = CAT_EMOJI[p.itemCategory] || '🛒';
+      const thumb = p.imageUrl
+        ? `<img src="${p.imageUrl}" alt="${p.itemName}"
+             class="w-full h-36 object-cover transition-opacity duration-300"
+             loading="lazy"
+             onerror="this.outerHTML='<div class=\\'w-full h-36 bg-${c}-50 flex items-center justify-center text-5xl\\'>${emoji}</div>'">`
+        : `<div class="w-full h-36 bg-${c}-50 flex items-center justify-center text-5xl">${emoji}</div>`;
+      return `
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all">
+        <div class="overflow-hidden h-36 bg-slate-50">${thumb}</div>
+        <div class="p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="badge bg-${c}-100 text-${c}-700">${p.itemCategory}</span>
+            <span class="text-xs text-slate-400">${ago}</span>
+          </div>
+          <div class="font-semibold text-slate-800 text-sm">${p.itemName}</div>
+          <div class="text-xl font-extrabold text-emerald-700 my-1.5">${naira(p.price)}</div>
+          <div class="flex items-center gap-1 text-xs text-slate-500">
+            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+            ${p.storeName}
+          </div>
+          <div class="text-xs text-slate-400 mt-1">by ${p.username}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch {
+    document.getElementById('recent-prices').innerHTML = '<p class="text-red-500 col-span-3 text-sm">Could not load recent prices.</p>';
+  }
+})();
+
+function timeSince(date) {
+  const diff = Math.floor((Date.now() - date) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+  return `${Math.floor(diff/86400)}d ago`;
+}
+
+async function loadPendingApprovals() {
+  const listEl  = document.getElementById('admin-pending-list');
+  const countEl = document.getElementById('admin-pending-count');
+  try {
+    const pending = await api('/api/prices/pending/');
+    countEl.textContent = `${pending.length} pending`;
+
+    if (!pending.length) {
+      listEl.innerHTML = '<p class="text-slate-400 text-sm text-center py-4">🎉 All submissions are reviewed. Nothing pending.</p>';
+      return;
+    }
+
+    listEl.innerHTML = pending.map(p => `
+      <div class="flex items-center justify-between py-3 border-b border-slate-50 last:border-0 gap-3" id="pending-row-${p.id}">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-semibold text-slate-800 text-sm">${p.itemName}</span>
+            <span class="badge bg-slate-100 text-slate-500">${p.itemCategory}</span>
+          </div>
+          <div class="text-xs text-slate-400 mt-0.5">
+            📍 ${p.storeName} &nbsp;·&nbsp; by <strong>${p.username}</strong> &nbsp;·&nbsp; ${timeSince(new Date(p.createdAt))}
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <span class="text-base font-bold text-slate-800">${naira(p.price)}</span>
+          <button class="btn-approve" onclick="approvePrice(${p.id})">✅ Approve</button>
+          <button class="btn-reject"  onclick="rejectPrice(${p.id})">❌</button>
+        </div>
+      </div>`).join('');
+  } catch {
+    listEl.innerHTML = '<p class="text-red-400 text-sm text-center py-4">Could not load pending submissions.</p>';
+  }
+}
+
+async function approvePrice(id) {
+  const row = document.getElementById(`pending-row-${id}`);
+  if (!row) return;
+  row.style.opacity = '0.4';
+  row.querySelectorAll('button').forEach(b => b.disabled = true);
+  try {
+    const res = await api(`/api/prices/${id}/approve/`, { method: 'POST' });
+    row.remove();
+    updatePendingCount(-1);
+    updateNav();
+    showToast(`✅ Approved! ${res.username} now has ${res.newPoints} pts.`, 'green');
+  } catch {
+    row.style.opacity = '1';
+    row.querySelectorAll('button').forEach(b => b.disabled = false);
+    showToast('❌ Could not approve. Try again.', 'red');
+  }
+}
+
+async function rejectPrice(id) {
+  if (!confirm('Reject and permanently delete this submission?')) return;
+  const row = document.getElementById(`pending-row-${id}`);
+  if (!row) return;
+  row.style.opacity = '0.4';
+  row.querySelectorAll('button').forEach(b => b.disabled = true);
+  try {
+    await api(`/api/prices/${id}/reject/`, { method: 'POST' });
+    row.remove();
+    updatePendingCount(-1);
+    updateNav();
+    showToast('🗑️ Submission rejected and removed.', 'gray');
+  } catch {
+    row.style.opacity = '1';
+    row.querySelectorAll('button').forEach(b => b.disabled = false);
+    showToast('❌ Could not reject. Try again.', 'red');
+  }
+}
+
+function updatePendingCount(delta) {
+  const countEl = document.getElementById('admin-pending-count');
+  const current = parseInt(countEl.textContent) || 0;
+  const next = Math.max(0, current + delta);
+  countEl.textContent = `${next} pending`;
+  if (next === 0) {
+    document.getElementById('admin-pending-list').innerHTML =
+      '<p class="text-slate-400 text-sm text-center py-4">🎉 All submissions are reviewed. Nothing pending.</p>';
+  }
+}
+
+function showToast(msg, color) {
+  const colors = { green: 'bg-emerald-600', red: 'bg-red-600', gray: 'bg-slate-600' };
+  const t = document.createElement('div');
+  t.className = `fixed bottom-24 md:bottom-6 right-4 z-50 ${colors[color] || 'bg-slate-700'} text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-lg transition-opacity max-w-xs`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 3000);
+}
+
+let miniMap = null;
+
+function quickGPS() {
+  if (!navigator.geolocation) { alert('Geolocation is not supported by your browser.'); return; }
+  const panel    = document.getElementById('gps-panel');
+  const statusEl = document.getElementById('gps-mini-status');
+  const btn      = document.getElementById('hero-gps-btn');
+  panel.classList.remove('hidden');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  statusEl.textContent = '🛰️ Detecting your location…';
+  btn.disabled = true;
+
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    btn.disabled = false;
+    const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+    statusEl.textContent = `✅ Located (±${Math.round(accuracy)}m). Fetching nearby markets…`;
+
+    const mapEl = document.getElementById('gps-mini-map');
+    mapEl.style.display = 'block';
+    if (!miniMap) {
+      miniMap = L.map('gps-mini-map', { zoomControl: true }).setView([lat, lng], 8);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20,
+      }).addTo(miniMap);
+    } else {
+      miniMap.setView([lat, lng], 8);
+    }
+    setTimeout(() => miniMap.invalidateSize(), 150);
+    const userIcon = L.divIcon({
+      className: '',
+      html: `<div style="width:16px;height:16px;border-radius:50%;background:#3b82f6;border:3px solid #fff;box-shadow:0 0 0 3px rgba(59,130,246,.4)"></div>`,
+      iconSize: [16, 16], iconAnchor: [8, 8],
+    });
+    L.marker([lat, lng], { icon: userIcon }).addTo(miniMap).bindPopup('📍 You are here').openPopup();
+
+    try {
+      const stores = await api(`/api/stores/nearby/?lat=${lat}&lng=${lng}&radius=200`);
+      const storesEl = document.getElementById('gps-mini-stores');
+      if (!stores.length) {
+        storesEl.innerHTML = '<p class="text-slate-400 text-sm text-center py-4">No markets found within 200 km.</p>';
+        statusEl.textContent = 'No markets found nearby.';
+        return;
+      }
+      const bounds = [[lat, lng]];
+      stores.slice(0, 5).forEach((s, i) => {
+        const colour = i === 0 ? '#059669' : '#6b7280';
+        const dl = s.distanceKm < 1 ? `${Math.round(s.distanceKm*1000)}m` : `${s.distanceKm}km`;
+        const icon = L.divIcon({
+          className: '',
+          html: `<div style="background:${colour};color:#fff;padding:2px 7px;border-radius:9999px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.3)">${dl}</div>`,
+          iconAnchor: [0, 0],
+        });
+        L.marker([s.latitude, s.longitude], { icon }).addTo(miniMap).bindPopup(`<b>${s.name}</b><br/>📏 ${dl} away`);
+        bounds.push([s.latitude, s.longitude]);
+      });
+      miniMap.fitBounds(bounds, { padding: [30, 30] });
+
+      storesEl.innerHTML = `<div class="divide-y divide-slate-50 mt-2">` + stores.slice(0, 4).map((s, i) => {
+        const dl = s.distanceKm < 1 ? `${Math.round(s.distanceKm*1000)} m` : `${s.distanceKm} km`;
+        return `
+        <div class="flex items-center justify-between py-2.5">
+          <div>
+            <span class="font-medium text-slate-800 text-sm">${s.name}</span>
+            ${i === 0 ? '<span class="badge bg-emerald-100 text-emerald-700 ml-2 text-xs">Nearest</span>' : ''}
+            <div class="text-xs text-slate-400">${s.address.split(',')[0]}</div>
+          </div>
+          <span class="font-bold text-sm ${i === 0 ? 'text-emerald-700' : 'text-slate-600'}">${dl}</span>
+        </div>`;
+      }).join('') + `</div>`;
+      statusEl.textContent = `✅ Found ${stores.length} market${stores.length !== 1 ? 's' : ''} within 200 km.`;
+    } catch {
+      document.getElementById('gps-mini-stores').innerHTML = '<p class="text-red-400 text-sm">Could not load nearby markets.</p>';
+    }
+  }, (err) => {
+    btn.disabled = false;
+    const msgs = {1:'Location access denied.',2:'Location unavailable.',3:'Location request timed out.'};
+    statusEl.textContent = `❌ ${msgs[err.code] || 'Could not get location.'}`;
+  }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+}
+</script>
+{% endblock %}
